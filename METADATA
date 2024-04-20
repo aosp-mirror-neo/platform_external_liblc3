@@ -11,7 +11,7 @@ third_party {
     type: GIT
     value: "https://github.com/google/liblc3"
   }
-  version: "v1.0.4"
-  last_upgrade_date { year: 2023 month: 8 day: 4 }
+  version: "v1.1.1"
+  last_upgrade_date { year: 2024 month: 4 day: 19 }
   license_type: NOTICE
 }
