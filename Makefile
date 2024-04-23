@@ -28,8 +28,30 @@ CC := $(if $(CC)=cc,gcc,$(CC))
 AS := $(if $(AS)=as,$(CC),$(AS))
 LD := $(if $(LD)=ld,$(CC),$(LD))
 
-CFLAGS := $(if $(DEBUG),-O0 -g,-O3)
+CFLAGS  := $(if $(DEBUG),-O0 -g,-O3)
+LDFLAGS := $(if $(DEBUG),-O0 -g,-O3)
+
 CFLAGS += -std=c11 -Wall -Wextra -Wdouble-promotion -Wvla -pedantic
+
+TARGET = $(lastword $(shell $(CC) -v 2>&1 | grep "Target: "))
+
+LIB_SHARED := true
+LIB_SUFFIX := so
+
+ifeq ($(TARGET),wasm32)
+  LIB_SHARED := false
+  LIB_SUFFIX := wasm
+  CFLAGS += -Iwasm -mbulk-memory
+  LDFLAGS += -nostdlib -Wl,--no-entry -Wl,--export-dynamic
+endif
+
+ifneq ($(LC3_PLUS),)
+  DEFINE += LC3_PLUS=$(LC3_PLUS)
+endif
+
+ifneq ($(LC3_PLUS_HR),)
+  DEFINE += LC3_PLUS_HR=$(LC3_PLUS_HR)
+endif
 
 
 #
@@ -40,7 +62,7 @@ lib_list :=
 bin_list :=
 
 define add-lib
-    $(eval $(1)_bin ?= $(1).a)
+    $(eval $(1)_bin ?= $(1).$(LIB_SUFFIX))
     $(eval $(1)_bin := $(addprefix $(BIN_DIR)/,$($(1)_bin)))
 
     lib_list += $(1)
@@ -64,7 +86,6 @@ define set-target
                        $(patsubst %.s,%.o,$(filter %.s,$($(1)_src))) \
                        $(patsubst %.cc,%.o,$(filter %.cc,$($(1)_src))))
     $(eval $(1)_obj := $(addprefix $(BUILD_DIR)/,$($(1)_obj)))
-    $(eval $(1)_lib := $(foreach lib, $($(1)_lib), $($(lib)_bin)))
 
     $($(1)_obj): INCLUDE  += $($(1)_include)
     $($(1)_obj): DEFINE   += $($(1)_define)
@@ -73,7 +94,6 @@ define set-target
 
     -include $($(1)_obj:.o=.d)
 
-    $($(1)_bin): $($(1)_lib)
     $($(1)_bin): $($(1)_obj)
     $($(1)_bin): $($(1)_dependencies)
 
@@ -130,16 +150,21 @@ $(BUILD_DIR)/%.o: %.cc $(MAKEFILE_DEPS)
 	    $(addprefix -I,$(INCLUDE)) \
 	    $(addprefix -D,$(DEFINE)) -MMD -MF $(@:.o=.d) -o $@
 
+ifeq ($(LIB_SHARED),true)
+    $(LIB): CFLAGS += -fvisibility=hidden -flto -fPIC
+    $(LIB): LDFLAGS += -flto -shared
+endif
+
 $(LIB): $(MAKEFILE_DEPS)
-	@echo "  AR      $(notdir $@)"
+	@echo "  LD      $(notdir $@)"
 	$(V)mkdir -p $(dir $@)
-	$(V)$(AR) rcs $@ $(filter %.o,$^)
+	$(V)$(LD) $(filter %.o,$^) $(LDFLAGS) -o $@
 
 $(BIN): $(MAKEFILE_DEPS)
 	@echo "  LD      $(notdir $@)"
 	$(V)mkdir -p $(dir $@)
-	$(V)$(LD) $(filter %.o,$^) $(filter %.a,$^) $(LDFLAGS) \
-	    $(addprefix -l,$(LDLIBS)) -o $@
+	$(V)$(LD) $(filter %.o,$^) \
+	    $(LDFLAGS) -L $(BIN_DIR) $(addprefix -l,$(LDLIBS)) -o $@
 
 clean:
 	$(V)rm -rf $(BUILD_DIR)
