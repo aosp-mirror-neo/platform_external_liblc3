@@ -12,6 +12,6 @@ third_party {
     value: "https://github.com/google/liblc3"
   }
   version: "v1.1.1"
-  last_upgrade_date { year: 2024 month: 4 day: 19 }
+  last_upgrade_date { year: 2024 month: 4 day: 26 }
   license_type: NOTICE
 }
