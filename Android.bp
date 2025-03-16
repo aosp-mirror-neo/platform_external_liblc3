@@ -2,6 +2,7 @@ cc_library_static {
     name: "liblc3",
     host_supported: true,
     visibility: [
+        "//hardware/interfaces/bluetooth:__subpackages__",
         "//packages/modules/Bluetooth:__subpackages__",
     ],
     apex_available: [
