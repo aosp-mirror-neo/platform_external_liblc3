@@ -37,6 +37,7 @@ cc_library_static {
         "include",
     ],
     min_sdk_version: "Tiramisu",
+    vendor_available: true,
 }
 
 cc_fuzz {
